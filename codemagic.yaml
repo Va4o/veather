@@ -8,7 +8,7 @@ workflows:
 
     environment:
       ios_signing:
-        distribution_type: app_store  # Для публикации в App Store
+        distribution_type: app store  # Для публикации в App Store
         bundle_identifier: com.example.veather  # Уникальный идентификатор твоего приложения
       vars:
         BUNDLE_ID: "com.example.veather"  # Используй тот же идентификатор приложения
