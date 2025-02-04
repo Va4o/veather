@@ -1,0 +1,67 @@
+workflows:
+  ios-native-workflow:
+    name: iOS Native
+    max_build_duration: 60  # Максимальное время сборки
+    instance_type: mac_mini_m2  # Используем mac_mini_m2 для сборки
+    integrations:
+      app_store_connect: codemagic  # Интеграция с App Store Connect через Codemagic
+
+    environment:
+      ios_signing:
+        distribution_type: app_store  # Для публикации в App Store
+        bundle_identifier: com.example.veather  # Уникальный идентификатор твоего приложения
+      vars:
+        BUNDLE_ID: "com.example.veather"  # Используй тот же идентификатор приложения
+        XCODE_WORKSPACE: "Runner.xcworkspace"  # Путь к твоему Xcode workspace файлу
+        XCODE_SCHEME: "Veather"  # Имя твоего Xcode схемы
+        APP_STORE_APPLE_ID: 6741481131  # Твой Apple ID для App Store Connect
+
+      xcode: latest  # Используем последнюю версию Xcode
+      cocoapods: default  # Стандартная версия CocoaPods
+
+    scripts:
+      - name: Install CocoaPods dependencies
+        script: |
+          pod install  # Установка зависимостей через CocoaPods
+
+      - name: Set up provisioning profiles settings on Xcode project
+        script: |
+          xcode-project use-profiles  # Настройка профилей подписания
+
+      - name: Increment build number
+        script: |
+          cd $CM_BUILD_DIR
+          LATEST_BUILD_NUMBER=$(app-store-connect get-latest-app-store-build-number "$APP_STORE_APPLE_ID")  # Получаем номер последней сборки из App Store
+          agvtool new-version -all $(($LATEST_BUILD_NUMBER + 1))  # Увеличиваем номер сборки
+
+      - name: Build ipa for distribution
+        script: |
+          xcode-project build-ipa \
+            --workspace "$CM_BUILD_DIR/$XCODE_WORKSPACE" \
+            --scheme "$XCODE_SCHEME"  # Сборка IPA для распространения
+
+    artifacts:
+      - build/ios/ipa/*.ipa  # IPA-файлы
+      - /tmp/xcodebuild_logs/*.log  # Логи сборки
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.app  # Артефакты .app
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/**/*.dSYM  # Символы для отладки
+
+    publishing:
+      email:
+        recipients:
+          - vafoqurbonov@mail.ru  # Добавь email для получения уведомлений
+        notify:
+          success: true  # Уведомление об успешной сборке
+          failure: false  # Без уведомлений при ошибке сборки
+
+      app_store_connect:
+        auth: integration  # Интеграция с App Store Connect
+
+        # Конфигурация для TestFlight (опционально)
+        submit_to_testflight: true  # Отправить в TestFlight
+        beta_groups:  # Укажи группы бета-тестеров
+          - "iOS Testers"
+          - "QA Team"
+
+        # Конфигурация для публикации в App Store (опционально)
+        submit_to_app_store: true  # Отправить в App Store после успешной сборки
